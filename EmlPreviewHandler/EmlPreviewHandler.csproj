@@ -12,6 +12,9 @@
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <Nullable>disable</Nullable>
     <LangVersion>latest</LangVersion>
+    <!-- regasm /codebase requires a strong name; this is identity only, not a trust/signing mechanism. -->
+    <SignAssembly>true</SignAssembly>
+    <AssemblyOriginatorKeyFile>EmlPreviewHandler.snk</AssemblyOriginatorKeyFile>
   </PropertyGroup>
 
   <ItemGroup>
