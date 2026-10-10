@@ -1,0 +1,179 @@
+Microsoft Explorer Preview pane:
+
+useful reference
+https://learn.microsoft.com/en-us/windows/powertoys/file-explorer
+https://learn.microsoft.com/en-us/office/vba/api/outlook.previewpane
+
+
+
+The main Microsoft documentation pages for the File Explorer Preview Pane are:
+
+| Page | URL |
+|---|---|
+| **Preview Handlers** (Win32 Shell developer docs) | [learn.microsoft.com/en-us/windows/win32/shell/preview-handlers](https://learn.microsoft.com/en-us/windows/win32/shell/preview-handlers) |
+| **PowerToys File Explorer Add-ons** (user-facing preview extensions) | [learn.microsoft.com/en-us/windows/powertoys/file-explorer](https://learn.microsoft.com/en-us/windows/powertoys/file-explorer) |
+
+The **Preview Handlers** page is the core developer documentation covering how the `IPreviewHandler` interface works, how to register a handler via COM, and how Explorer loads handlers into the `PREVHOST.EXE` surrogate process. The **PowerToys** page documents the built-in preview extensions (SVG, Markdown, PDF, source code, G-code, QOI) and how to enable them.
+
+To toggle the pane itself: **View → Preview pane** in the File Explorer ribbon, or press **Alt+P**. Preview handlers must also be enabled under **Folder Options → View → "Show preview handlers in preview pane"**.
+
+Note: Since the **October 2025 security update**, files with a Mark of the Web (downloaded from the internet) are blocked from previewing by default in Windows 11 25H2.
+
+
+
+
+Registering a custom `IPreviewHandler` requires **four registry entries**. You can do this via a `.reg` file, `regsvr32` (if your DLL implements `DllRegisterServer`), or programmatically.
+
+## 1. Register the COM class
+
+```
+HKEY_CLASSES_ROOT\CLSID\{YOUR-CLSID}
+    (Default) = "My Preview Handler"
+    DisplayName = "My Preview Handler"
+    AppID = "{6d2b5079-2f0b-48dd-ab7f-97cec514d30b}"
+
+HKEY_CLASSES_ROOT\CLSID\{YOUR-CLSID}\InprocServer32
+    (Default) = "C:\Path\To\MyHandler.dll"
+    ThreadingModel = "Apartment"
+```
+
+The `AppID` value `{6d2b5079-2f0b-48dd-ab7f-97cec514d30b}` is the well-known AppID for **prevhost.exe** — it tells Explorer to load your DLL into the `PREVHOST.EXE` surrogate process rather than directly into `explorer.exe`.
+
+## 2. Associate with a file extension (or ProgID)
+
+```
+HKEY_CLASSES_ROOT\.myext\shellex\{8895b1c6-b41f-4c1c-a562-0d564250836f}
+    (Default) = "{YOUR-CLSID}"
+```
+
+The GUID `{8895b1c6-b41f-4c1c-a562-0d564250836f}` is the system-defined identifier for preview handlers — do not change it. You can also associate via the ProgID (e.g. `HKEY_CLASSES_ROOT\myextfile\shellex\{8895b1c6-...}`).
+
+## 3. Add to the approved Preview Handlers list
+
+```
+HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\PreviewHandlers
+    "{YOUR-CLSID}" = "My Preview Handler"
+```
+
+Without this entry, Explorer will show *"This file can't be previewed"* even if the other keys are correct.
+
+## 4. Register the DLL
+
+From an **elevated** command prompt:
+
+```
+regsvr32 C:\Path\To\MyHandler.dll
+```
+
+To unregister:
+
+```
+regsvr32 /u C:\Path\To\MyHandler.dll
+```
+
+> **Note:** The `ThreadingModel` must be `Apartment`. The handler runs in its own `PREVHOST.EXE` process, so it's isolated from Explorer — but it still needs a message loop for UI.
+
+The official reference is [How to Register a Preview Handler](https://learn.microsoft.com/en-us/windows/win32/shell/how-to-register-a-preview-handler).
+
+
+
+
+Yes — several options, from one-off to system-wide:
+
+## Single file
+
+**File Explorer:** Right-click → **Properties** → check **Unblock** → OK.
+
+**Command line:**
+```cmd
+del /q "C:\path\to\file.ext":Zone.Identifier
+```
+
+## Bulk / recursive
+
+**PowerShell:**
+```powershell
+Get-ChildItem "C:\path\to\folder" -File -Recurse | Unblock-File
+```
+Add `-Verbose` to see progress. This is the most common approach.
+
+**Sysinternals [Streams](https://learn.microsoft.com/en-us/sysinternals/downloads/streams):**
+```cmd
+streams -d "C:\path\to\file.ext"
+```
+Or for a whole folder recursively:
+```cmd
+streams -d -s "C:\path\to\folder"
+```
+
+## Prevent MOTW from being applied in the future
+
+This does **not** strip existing tags — it only stops Windows from writing the `Zone.Identifier` ADS to newly downloaded files.
+
+**Group Policy** (Pro/Enterprise):
+`gpedit.msc` → **User Configuration → Administrative Templates → Windows Components → Attachment Manager** → enable **"Do not preserve zone information in file attachments"**
+
+**Registry** (all editions):
+```
+HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Attachments
+    SaveZoneInformation (DWORD) = 1
+```
+| Value | Meaning |
+|-------|---------|
+| 0 | Not configured (default) |
+| 1 | **Enabled** — don't preserve zone info |
+| 2 | Disabled — always preserve |
+
+## Programmatic (C#)
+
+```csharp
+string ads = Path.Combine(filePath, "Zone.Identifier");
+if (File.Exists(ads)) File.Delete(ads);
+```
+
+> **Caveat:** The registry/GP setting only affects *future* downloads. Files already on disk still need one of the removal methods above to clear the existing `Zone.Identifier` stream.
+
+
+Yes, several solid options depending on language:
+
+## C# / .NET
+
+| Library | License | Notes |
+|---|---|---|
+| **MimeKit** | MIT | The go-to open-source choice. Full MIME parsing, handles multipart, attachments, encoding. Also has a .NET Standard 2.0 target. |
+| **MSGReader** | MIT | Reads both MSG and EML. Simpler API, good for extracting basic fields. |
+| **LEML** | MIT | Lightweight RFC 822 parser, minimal dependencies. |
+| **Aspose.Email** | Commercial | Full-featured (EML, MSG, MHT, PST, etc.), no Outlook needed. |
+| **GemBox.Email** | Commercial | Read/write/convert EML, MSG, MHTML; also IMAP/POP/SMTP. |
+
+```csharp
+// MimeKit example
+using MimeKit;
+var message = MimeMessage.Load("file.eml");
+Console.WriteLine(message.Subject);
+Console.WriteLine(message.TextBody);
+```
+
+## C / C++
+
+| Library | License | Notes |
+|---|---|---|
+| **GMime** (jstedfast) | LGPL | C library (with C++ wrappers). Robust MIME parser, S/MIME, PGP support. Used by Thunderbird. |
+| **VMime** | LGPL | C++ class library for RFC 822/MIME messages. Also supports IMAP/POP/SMTP. |
+| **Mimetic** | MIT | Header-only C++ library, lightweight MIME parsing. |
+| **Aspose.Email for C++** | Commercial | Native C++ API, supports EML, MSG, EMLX, MHT. |
+
+```cpp
+// GMime example
+GMimeStream *stream = g_mime_stream_fs_open("message.eml", O_RDONLY, 0644, NULL);
+GMimeParser *parser = g_mime_parser_new_with_stream(stream);
+GMimeMessage *message = g_mime_parser_construct_message(parser, NULL);
+```
+
+## Other languages (for reference)
+
+- **Python**: `eml-parser`, `emlmailreader`, or the built-in `email` module
+- **JavaScript/TypeScript**: `eml-parser` (npm) — supports headers, attachments, PDF/HTML conversion
+
+**TL;DR:** For C#, **MimeKit** is the most widely recommended open-source option. For C/C++, **GMime** is the most battle-tested (it's what Thunderbird uses internally).
+
