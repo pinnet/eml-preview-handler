@@ -34,6 +34,16 @@ namespace EmlPreviewHandler
         private Color _backgroundColor = SystemColors.Window;
         private Color _textColor = SystemColors.WindowText;
 
+        protected PreviewHandlerBase()
+        {
+#if DEBUG
+            // Pops the JIT-debugger picker the instant Explorer activates this COM object -
+            // the most reliable way to prove whether Explorer is reaching our code at all,
+            // without having to hunt for the right prevhost.exe process to attach to by hand.
+            System.Diagnostics.Debugger.Launch();
+#endif
+        }
+
         /// <summary>Create the WinForms control that previews <paramref name="filePath"/>.</summary>
         protected abstract Control CreatePreviewControl(string filePath);
 
