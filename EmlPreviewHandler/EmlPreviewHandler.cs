@@ -6,9 +6,9 @@ using Microsoft.Win32;
 namespace EmlPreviewHandler
 {
     [ComVisible(true)]
-    // Regenerate this GUID (Tools > Create GUID, or [guid]::NewGuid() in PowerShell)
-    // before you ship this anywhere beyond your own machine.
-    [Guid("6E2F9F2E-9F3E-4F79-8D3B-6E6D1B9E7B1A")]
+    // Regenerate this GUID ([guid]::NewGuid() in PowerShell) if you fork this
+    // project, so your build doesn't collide with anyone else's registration.
+    [Guid("B0E1FC04-4391-4E41-A74A-A1F7C92DDED8")]
     [ProgId("EmlPreviewHandler.EmlPreviewHandler")]
     [ClassInterface(ClassInterfaceType.None)]
     public sealed class EmlPreviewHandlerControl : PreviewHandlerBase

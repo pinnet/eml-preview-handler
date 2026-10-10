@@ -102,8 +102,10 @@ cd EmlPreviewHandler
 ## Before deploying beyond your own machine
 
 The CLSID in [`EmlPreviewHandler.cs`](EmlPreviewHandler/EmlPreviewHandler.cs)
-is a placeholder. Regenerate it (`[guid]::NewGuid()` in PowerShell) so it
-doesn't collide with anyone else's build.
+is just a random, public identifier (it ends up in the registry in plaintext
+regardless, so there's nothing to keep secret). If you fork this project,
+regenerate it (`[guid]::NewGuid()` in PowerShell) so your build doesn't
+collide with anyone else's registration of the same CLSID.
 
 ## Project layout
 
