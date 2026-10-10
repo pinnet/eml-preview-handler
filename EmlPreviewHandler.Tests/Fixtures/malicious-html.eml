@@ -1,0 +1,16 @@
+From: Attacker <attacker@example.com>
+To: Victim <victim@example.com>
+Subject: You won a prize!
+Date: Mon, 10 Oct 2026 10:00:00 -0700
+Message-ID: <malicious-001@example.com>
+MIME-Version: 1.0
+Content-Type: text/html; charset=utf-8
+
+<html><body>
+<p>Congratulations, click below:</p>
+<script>alert('xss');</script>
+<img src="http://evil.example.com/track.gif" onerror="alert('img-xss')">
+<a href="javascript:alert('link-xss')">Click here</a>
+<a href="https://example.com">Safe link</a>
+<p onclick="alert('p-xss')">Some text</p>
+</body></html>

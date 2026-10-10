@@ -1,7 +1,6 @@
 using System;
 using System.Diagnostics;
 using System.Drawing;
-using System.IO;
 using System.Linq;
 using System.Net;
 using System.Windows.Forms;
@@ -83,27 +82,9 @@ namespace EmlPreviewHandler
             {
                 var message = MimeMessage.Load(filePath);
 
-                _headerLabel.Text =
-                    $"Subject: {message.Subject}\r\n" +
-                    $"From: {message.From}\r\n" +
-                    $"To: {message.To}\r\n" +
-                    $"Date: {message.Date:f}";
-
-                string html = message.HtmlBody;
-                if (!string.IsNullOrWhiteSpace(html))
-                {
-                    html = ResolveInlineImages(message, html);
-                    _browser.DocumentText = HtmlSanitizer.Sanitize(html, allowRemoteImages: false);
-                }
-                else
-                {
-                    string text = message.TextBody ?? string.Empty;
-                    _browser.DocumentText =
-                        "<pre style=\"font-family:'Segoe UI',sans-serif;white-space:pre-wrap;\">" +
-                        WebUtility.HtmlEncode(text) + "</pre>";
-                }
-
-                PopulateAttachments(message);
+                _headerLabel.Text = MessageRenderer.BuildHeaderText(message);
+                _browser.DocumentText = MessageRenderer.BuildBodyHtml(message);
+                PopulateAttachments(MessageRenderer.GetAttachmentNames(message));
             }
             catch (Exception ex)
             {
@@ -113,13 +94,8 @@ namespace EmlPreviewHandler
             }
         }
 
-        private void PopulateAttachments(MimeMessage message)
+        private void PopulateAttachments(string[] names)
         {
-            var names = message.Attachments
-                .OfType<MimePart>()
-                .Select(p => p.FileName ?? "attachment")
-                .ToArray();
-
             if (names.Length == 0)
             {
                 _attachmentList.Visible = false;
@@ -128,27 +104,6 @@ namespace EmlPreviewHandler
 
             _attachmentList.Items.Add($"Attachments ({names.Length}):");
             _attachmentList.Items.AddRange(names.Cast<object>().ToArray());
-        }
-
-        // Inlines cid: referenced images as data: URIs so HTML mail renders correctly
-        // without ever issuing a network request for remote content.
-        private static string ResolveInlineImages(MimeMessage message, string html)
-        {
-            foreach (var part in message.BodyParts.OfType<MimePart>())
-            {
-                if (string.IsNullOrEmpty(part.ContentId))
-                    continue;
-
-                using (var ms = new MemoryStream())
-                {
-                    part.Content.DecodeTo(ms);
-                    string dataUri = $"data:{part.ContentType.MimeType};base64,{Convert.ToBase64String(ms.ToArray())}";
-                    string cid = part.ContentId.Trim('<', '>');
-                    html = html.Replace($"cid:{cid}", dataUri);
-                }
-            }
-
-            return html;
         }
 
         protected override void Dispose(bool disposing)

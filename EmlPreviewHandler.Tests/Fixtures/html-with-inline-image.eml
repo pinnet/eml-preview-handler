@@ -1,0 +1,34 @@
+From: Alice Example <alice@example.com>
+To: Bob Example <bob@example.com>
+Subject: HTML message with inline image and attachment
+Date: Mon, 10 Oct 2026 09:15:00 -0700
+Message-ID: <html-image-001@example.com>
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="MIXED-BOUNDARY"
+
+--MIXED-BOUNDARY
+Content-Type: multipart/related; boundary="RELATED-BOUNDARY"
+
+--RELATED-BOUNDARY
+Content-Type: text/html; charset=utf-8
+
+<html><body><p>Hello, here is our logo:</p><img src="cid:logo123@example.com"></body></html>
+
+--RELATED-BOUNDARY
+Content-Type: image/png
+Content-Transfer-Encoding: base64
+Content-ID: <logo123@example.com>
+Content-Disposition: inline; filename="logo.png"
+
+iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkGP3//z8ABQEBACcY42YAAAAASUVORK5CYII=
+
+--RELATED-BOUNDARY--
+
+--MIXED-BOUNDARY
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename="notes.txt"
+
+VGhpcyBpcyB0aGUgYXR0YWNobWVudCBjb250ZW50Lg0K
+
+--MIXED-BOUNDARY--

@@ -10,7 +10,7 @@ namespace EmlPreviewHandler
     /// Strips active content, event handlers and javascript: URIs, and optionally
     /// blocks remote image loading to avoid read-receipt-style tracking beacons.
     /// </summary>
-    internal static class HtmlSanitizer
+    public static class HtmlSanitizer
     {
         private static readonly string[] DisallowedTags =
         {

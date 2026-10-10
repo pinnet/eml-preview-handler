@@ -28,7 +28,8 @@ preview pane. This project implements that contract in C#:
 |---|---|
 | [`Interop/ShellInterop.cs`](EmlPreviewHandler/Interop/ShellInterop.cs) | Hand-declared COM interfaces (`IPreviewHandler`, `IPreviewHandlerVisuals`, `IObjectWithSite`, `IOleWindow`, `IInitializeWithFile`/`IInitializeWithStream`) — there are no built-in .NET wrappers for these. |
 | [`PreviewHandlerBase.cs`](EmlPreviewHandler/PreviewHandlerBase.cs) | Reusable COM plumbing: window hosting/sizing, focus, accelerator forwarding, materializing `IStream` input to a temp file. |
-| [`EmlPreviewControl.cs`](EmlPreviewHandler/EmlPreviewControl.cs) | Parses the `.eml` with [MimeKit](https://github.com/jstedfast/MimeKit) and renders it in a `WebBrowser` control. |
+| [`EmlPreviewControl.cs`](EmlPreviewHandler/EmlPreviewControl.cs) | Hosts a `WebBrowser` control and wires up link/navigation policing. |
+| [`MessageRenderer.cs`](EmlPreviewHandler/MessageRenderer.cs) | Parses the `.eml` with [MimeKit](https://github.com/jstedfast/MimeKit) and builds the header text, body HTML and attachment list — kept UI-free so it's unit testable. |
 | [`HtmlSanitizer.cs`](EmlPreviewHandler/HtmlSanitizer.cs) | Allow-list sanitizer for the HTML body. |
 | [`EmlPreviewHandler.cs`](EmlPreviewHandler/EmlPreviewHandler.cs) | The concrete COM class, plus `[ComRegisterFunction]`/`[ComUnregisterFunction]` hooks that add the registry entries Explorer requires. |
 
@@ -99,6 +100,25 @@ cd EmlPreviewHandler
 .\unregister.ps1
 ```
 
+## Tests
+
+[`EmlPreviewHandler.Tests`](EmlPreviewHandler.Tests) unit tests the non-UI
+rendering pipeline (`MessageRenderer` + `HtmlSanitizer`) against sample `.eml`
+fixtures in [`Fixtures/`](EmlPreviewHandler.Tests/Fixtures), covering a
+plain-text message, an HTML message with an inline `cid:` image and an
+attachment, and a message with malicious HTML (script tags, event handlers,
+`javascript:` links, a remote tracking image) to confirm sanitization holds.
+
+```powershell
+cd EmlPreviewHandler.Tests
+dotnet test
+```
+
+The `WebBrowser`-hosting UI itself (`EmlPreviewControl`/`PreviewHandlerBase`)
+isn't covered here, since it requires a live STA message loop and an actual
+Explorer/`prevhost.exe` host to exercise meaningfully — verify that path by
+registering the handler and previewing the fixture `.eml` files in Explorer.
+
 ## Before deploying beyond your own machine
 
 The CLSID in [`EmlPreviewHandler.cs`](EmlPreviewHandler/EmlPreviewHandler.cs)
@@ -115,10 +135,12 @@ EmlPreviewHandler/
   AssemblyInfo.cs
   Interop/                  Hand-written COM interop declarations
   PreviewHandlerBase.cs      Reusable IPreviewHandler COM base class
+  MessageRenderer.cs         UI-free .eml -> header/body/attachments logic
   HtmlSanitizer.cs           HTML allow-list sanitizer
   EmlPreviewControl.cs       WinForms control that renders a message
   EmlPreviewHandler.cs       Concrete handler + COM (un)registration
   register.ps1 / unregister.ps1
+EmlPreviewHandler.Tests/     xUnit tests + sample .eml fixtures
 preview pane.txt             Research notes this project was built from
 ```
 
