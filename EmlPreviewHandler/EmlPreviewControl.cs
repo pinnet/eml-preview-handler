@@ -11,6 +11,7 @@ namespace EmlPreviewHandler
     /// <summary>WinForms control that renders a single .eml file's headers, body and attachment list.</summary>
     internal sealed class EmlPreviewControl : UserControl
     {
+        private readonly Label _debugLabel;
         private readonly Label _headerLabel;
         private readonly WebBrowser _browser;
         private readonly ListBox _attachmentList;
@@ -18,6 +19,19 @@ namespace EmlPreviewHandler
         public EmlPreviewControl(string filePath)
         {
             Dock = DockStyle.Fill;
+
+            // Always-visible marker so "nothing shows up" can be diagnosed as a registration/COM
+            // activation problem (this never appears) vs. a rendering problem (this appears, the
+            // rest doesn't). Remove once the handler is confirmed working end to end.
+            _debugLabel = new Label
+            {
+                Location = new Point(0, 0),
+                AutoSize = true,
+                Text = "DEBUG: EmlPreviewHandler loaded",
+                BackColor = Color.Yellow,
+                ForeColor = Color.Black,
+                Font = new Font(FontFamily.GenericSansSerif, 8f, FontStyle.Bold)
+            };
 
             _headerLabel = new Label
             {
@@ -49,6 +63,8 @@ namespace EmlPreviewHandler
             Controls.Add(_browser);
             Controls.Add(_attachmentList);
             Controls.Add(_headerLabel);
+            Controls.Add(_debugLabel);
+            _debugLabel.BringToFront();
 
             LoadMessage(filePath);
         }

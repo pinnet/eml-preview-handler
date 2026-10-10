@@ -99,7 +99,25 @@ namespace EmlPreviewHandler
         public void DoPreview()
         {
             _previewControl?.Dispose();
-            _previewControl = CreatePreviewControl(_filePath);
+
+            try
+            {
+                _previewControl = CreatePreviewControl(_filePath);
+            }
+            catch (Exception ex)
+            {
+                // Never let an exception escape across the COM boundary here - Explorer just
+                // renders a blank pane with no diagnostic if DoPreview fails, so show it instead.
+                _previewControl = new Label
+                {
+                    Dock = DockStyle.Fill,
+                    AutoSize = false,
+                    Text = "Preview failed to load:\r\n" + ex,
+                    BackColor = Color.White,
+                    ForeColor = Color.Red
+                };
+            }
+
             _previewControl.BackColor = _backgroundColor;
             _previewControl.ForeColor = _textColor;
 
