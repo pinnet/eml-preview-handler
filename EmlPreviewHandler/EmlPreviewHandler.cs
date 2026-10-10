@@ -70,6 +70,17 @@ namespace EmlPreviewHandler
             {
                 listKey?.DeleteValue(clsid, throwOnMissingValue: false);
             }
+
+            try
+            {
+                // RegAsm only removes the InprocServer32/ProgId entries it created itself; our
+                // custom AppID value would otherwise leave CLSID\{guid} behind as an orphan.
+                Registry.ClassesRoot.DeleteSubKeyTree($@"CLSID\{clsid}", throwOnMissingSubKey: false);
+            }
+            catch
+            {
+                // best effort - don't block uninstall on a stale/missing key
+            }
         }
     }
 }
